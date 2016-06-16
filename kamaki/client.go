@@ -143,21 +143,6 @@ func (client Client) Validate() error {
 	return nil
 }
 
-// Getter of authURL field.
-func (client Client) GetAuthURL() string {
-	return client.authURL
-}
-
-// Getter of token field.
-func (client Client) GetToken() string {
-	return client.token
-}
-
-// Getter of cloudName field.
-func (client Client) GetCloudName() string {
-	return client.cloudName
-}
-
 // Getter of kamakirc field.
 func (client Client) GetKamakirc() string {
 	return client.kamakirc
