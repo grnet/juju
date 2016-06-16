@@ -22,8 +22,8 @@ func RunCmdOutput(args []string) ([]byte, error) {
 	return out, nil
 }
 
-// This functions gets the absolute path of kamakirc file based on the
-// home directory of the current user.
+// This function gets the absolute path of kamakirc file located in the home
+// directory of the current user.
 // It returns the absolute path of kamakirc file or any error encountered.
 func FormatPath(kamakirc string) (string, error) {
 	usr, err := user.Current()

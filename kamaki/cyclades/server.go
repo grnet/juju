@@ -5,6 +5,11 @@ import (
 	"github.com/juju/juju/kamaki"
 )
 
+// Filter field keys.
+const (
+	NamePrefix = "--name-prefix"
+)
+
 // This client executes kamaki commands for CRUD operations on Synnefo
 // Virtual Servers.
 type Client struct {
@@ -36,23 +41,38 @@ type ServerDetails struct {
 	Host string `json:"SNF:fqdn"`
 }
 
+// This struct defines all required information for creating a new Virtual
+// Synnefo Server.
+type ServerOpts struct {
+	// Server Name.
+	Name string
+	// ID of project in which resources will be allocated.
+	ProjectID string
+	// Flavor ID.
+	FlavorID string
+	// Image ID of for the new Server.
+	ImageID string
+	// Slice of files to be injected to the new Server.
+	Personality []PersonalityInfo
+	// Wait server to build.
+	Wait bool
+}
+
 // This function creates a new Server to the Synnefo cloud specified by this
 // client.
 // It is created based on a specific image, flavor, name, assigned to a
 // specific project and customized according the personality info given as
 // parameter.
 // Returns details of the created server or any error encountered.
-func (compute Client) CreateServer(serverName string, projectID string,
-	flavorID string, imageID string, personalityInfo []PersonalityInfo,
-	wait bool) (
+func (compute Client) CreateServer(serverOpts ServerOpts) (
 	*ServerDetails, error) {
-	personality := formatPersonalityInfo(personalityInfo)
-	args := []string{"server", "create", "--name", serverName,
-		"--flavor-id", flavorID, "--image-id", imageID, "--project-id",
-		projectID, "--output-format", "json", "-c",
+	personality := formatPersonalityInfo(serverOpts.Personality)
+	args := []string{"server", "create", "--name", serverOpts.Name,
+		"--flavor-id", serverOpts.FlavorID, "--image-id", serverOpts.ImageID,
+		"--project-id", serverOpts.ProjectID, "--output-format", "json", "-c",
 		compute.Client.GetKamakirc()}
 	args = append(args, personality...)
-	if wait {
+	if serverOpts.Wait {
 		args = append(args, "-w")
 	}
 	server := &ServerDetails{}
@@ -69,12 +89,14 @@ func (compute Client) CreateServer(serverName string, projectID string,
 
 // This functions list servers of a specific Synnefo cloud according to this
 // client.
-// Lists servers whose name starts with the prefix given as parameter.
+// Lists servers according to the filtering given as parameter.
 // Returns a slice of the details of the servers or any error encountered.
-func (compute Client) ListServers(namePrefix string) (
+func (compute Client) ListServers(filter map[string][]string) (
 	[]ServerDetails, error) {
-	args := []string{"server", "list", "-l", "--name-prefix", namePrefix,
-		"--output-format", "json", "-c", compute.Client.GetKamakirc()}
+	filterValues := formatFilter(filter)
+	args := []string{"server", "list", "-l", "--output-format",
+		"json", "-c", compute.Client.GetKamakirc()}
+	args = append(args, filterValues...)
 	output, err := kamaki.RunCmdOutput(args)
 	if err != nil {
 		return nil, fmt.Errorf("Cannot list servers: %s", string(output))
@@ -87,7 +109,20 @@ func (compute Client) ListServers(namePrefix string) (
 	return servers, nil
 }
 
-// This function takes a slice of personality info and formatted them to a
+// This function filtering options and formats them to a slice of strings.
+// This format is required to pass filtering options as argument kamaki exec
+// commands.
+func formatFilter(filter map[string][]string) []string {
+	var filterValues []string
+	for k, filt := range filter {
+		for _, v := range filt {
+			filterValues = append(filterValues, []string{k, v}...)
+		}
+	}
+	return filterValues
+}
+
+// This function takes a slice of personality info and formats them to a
 // slice of strings.
 // This format is required to pass personality info as argument to kamaki exec
 // command.

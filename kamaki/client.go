@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-// This struct a client for executing kamaki commands.
+// This struct initializes a client for executing kamaki commands.
 type Client struct {
 	// Name of the Synnefo cloud.
 	cloudName string
