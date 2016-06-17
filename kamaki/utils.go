@@ -36,9 +36,5 @@ func FormatPath(kamakirc string) (string, error) {
 // This function converts raw JSON data to the struct given as parameter.
 // It returns any error encountered.
 func ToStruct(data []byte, structType interface{}) error {
-	err := json.Unmarshal(data, structType)
-	if err != nil {
-		return err
-	}
-	return nil
+	return json.Unmarshal(data, structType)
 }

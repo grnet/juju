@@ -2,7 +2,9 @@ package cyclades
 
 import (
 	"fmt"
+
 	"github.com/juju/juju/kamaki"
+	"github.com/juju/juju/kamaki/client"
 )
 
 // Filter field keys.
@@ -13,7 +15,7 @@ const (
 // This client executes kamaki commands for CRUD operations on Synnefo
 // Virtual Servers.
 type Client struct {
-	*kamaki.Client
+	client.Client
 }
 
 // This struct represents personality info for creating Synnefo Servers.
@@ -78,7 +80,7 @@ func (compute Client) CreateServer(serverOpts ServerOpts) (
 	server := &ServerDetails{}
 	output, err := kamaki.RunCmdOutput(args)
 	if err != nil {
-		return nil, fmt.Errorf("Cannot create server: %s", string(output))
+		return nil, fmt.Errorf("Cannot create server")
 	}
 	kamaki.ToStruct(output, server)
 	if err != nil {
@@ -87,7 +89,7 @@ func (compute Client) CreateServer(serverOpts ServerOpts) (
 	return server, nil
 }
 
-// This functions list servers of a specific Synnefo cloud according to this
+// This functions lists servers of a specific Synnefo cloud according to this
 // client.
 // Lists servers according to the filtering given as parameter.
 // Returns a slice of the details of the servers or any error encountered.
@@ -99,7 +101,7 @@ func (compute Client) ListServers(filter map[string][]string) (
 	args = append(args, filterValues...)
 	output, err := kamaki.RunCmdOutput(args)
 	if err != nil {
-		return nil, fmt.Errorf("Cannot list servers: %s", string(output))
+		return nil, fmt.Errorf("Cannot list servers")
 	}
 	servers := make([]ServerDetails, 0)
 	err = kamaki.ToStruct(output, &servers)
