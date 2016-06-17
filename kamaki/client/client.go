@@ -100,7 +100,7 @@ func (client Client) setCloud() error {
 // It returns any error encountered.
 func (client Client) createKamakirc() error {
 	dir := filepath.Dir(client.kamakirc)
-	if dir != client.kamakirc {
+	if dir != "." {
 		err := os.MkdirAll(dir+string(filepath.Separator), 0700)
 		if err != nil {
 			return fmt.Errorf("Cannot create directory: %s", dir)
