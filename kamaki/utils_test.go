@@ -25,7 +25,8 @@ func getHomeDir(c *gc.C) string {
 }
 
 func (s *UtilsSuite) TestRunCmdOuput(c *gc.C) {
-	_, err := kamaki.RunCmdOutput([]string{"--wrong"})
+	_, err := kamaki.RunCmdOutput([]string{"user", "authenticate",
+		"-c", "invalid"})
 	c.Assert(err, gc.NotNil)
 }
 
