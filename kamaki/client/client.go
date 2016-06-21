@@ -9,8 +9,32 @@ import (
 	"github.com/juju/juju/kamaki"
 )
 
-// This struct initializes a client for executing kamaki commands.
-type Client struct {
+// This interface defines Kamaki clients which executing kamaki commands via
+// exec.
+type Client interface {
+	// Sets the cloud name to the specified config file client.
+	// It returns any error encountered.
+	SetAuthURL() error
+
+	// Sets the token to the specified config file by client.
+	// It returns any error encountered.
+	SetToken() error
+
+	// Sets the default cloud to the specified kamakirc file.
+	// It returns any error encountered.
+	SetCloud() error
+
+	// Validates the existence of the client fields as well as the validity of
+	// the given authentication URL endpoint.
+	// Returns error if any of the fields is not valid; nil otherwise.
+	Validate() error
+
+	// Gets the location of the client config file.
+	GetConfigFile() string
+}
+
+// This struct represents a client for executing kamaki commands.
+type KamakiClient struct {
 	// Name of the Synnefo cloud.
 	cloudName string
 	// Authentication URL endpoint.
@@ -25,12 +49,12 @@ type Client struct {
 // Before constructing a new client, it gets the absolute path of kamakirc file
 // based on the home directory of the current user.
 // Returns the initialized cloud or any error encountered
-func New(cloudName, authURL, token, kamakirc string) (*Client, error) {
+func New(cloudName, authURL, token, kamakirc string) (*KamakiClient, error) {
 	kamakircPath, err := kamaki.FormatPath(kamakirc)
 	if err != nil {
 		return nil, err
 	}
-	return &Client{cloudName, authURL, token, kamakircPath}, nil
+	return &KamakiClient{cloudName, authURL, token, kamakircPath}, nil
 }
 
 // This function sets up a kamaki client ready for use.
@@ -38,29 +62,27 @@ func New(cloudName, authURL, token, kamakirc string) (*Client, error) {
 // it initializes a new Cloud associated with the given cloud name, auth URL
 // and token.
 // Returns any error encountered.
-func (client Client) Setup() error {
-	var err = client.createKamakirc()
-	if err != nil {
+func Setup(client Client) error {
+	if err := client.Validate(); err != nil {
 		return err
 	}
-	err = client.setAuthURL()
-	if err != nil {
+	if err := CreateConfFile(client.GetConfigFile()); err != nil {
 		return err
 	}
-	err = client.setToken()
-	if err != nil {
+	if err := client.SetAuthURL(); err != nil {
 		return err
 	}
-	err = client.setCloud()
-	if err != nil {
+	if err := client.SetToken(); err != nil {
+		return err
+	}
+	if err := client.SetCloud(); err != nil {
 		return err
 	}
 	return nil
 }
 
-// Sets the cloud name to the specified kamakirc file.
-// It returns any error encountered.
-func (client Client) setAuthURL() error {
+// `SetAuthURL` is specified in the `Client` interface.
+func (client KamakiClient) SetAuthURL() error {
 	var args = []string{"config", "set", "cloud." + client.cloudName + ".url",
 		client.authURL, "-c", client.kamakirc}
 	_, err := kamaki.RunCmdOutput(args)
@@ -70,9 +92,8 @@ func (client Client) setAuthURL() error {
 	return nil
 }
 
-// Sets the token to the specified kamakirc file.
-// It returns any error encountered.
-func (client Client) setToken() error {
+// `SetToken` is specified in the `Client` interface.
+func (client KamakiClient) SetToken() error {
 	var args = []string{"config", "set", "cloud." + client.cloudName + ".token",
 		client.token, "-c", client.kamakirc}
 	_, err := kamaki.RunCmdOutput(args)
@@ -82,9 +103,8 @@ func (client Client) setToken() error {
 	return nil
 }
 
-// Sets the default cloud to the specified kamakirc file.
-// It returns any error encountered.
-func (client Client) setCloud() error {
+// `SetCLoud` is specified in the `Client` interface.
+func (client KamakiClient) SetCloud() error {
 	var args = []string{"config", "set", "default_cloud",
 		client.cloudName, "-c", client.kamakirc}
 	_, err := kamaki.RunCmdOutput(args)
@@ -94,33 +114,31 @@ func (client Client) setCloud() error {
 	return nil
 }
 
-// Creates kamakirc file to the desired location.
-// Check if kamakirc and its parent folders already exist and it creates them
+// Creates config file to the desired location.
+// Check if config and its parent folders already exist and it creates them
 // if this is not the case.
 // It returns any error encountered.
-func (client Client) createKamakirc() error {
-	dir := filepath.Dir(client.kamakirc)
+func CreateConfFile(confFile string) error {
+	dir := filepath.Dir(confFile)
 	if dir != "." {
 		err := os.MkdirAll(dir+string(filepath.Separator), 0700)
 		if err != nil {
 			return fmt.Errorf("Cannot create directory: %s", dir)
 		}
 	}
-	var _, err = os.Stat(client.kamakirc)
+	var _, err = os.Stat(confFile)
 	if os.IsNotExist(err) {
-		var file, err = os.Create(client.kamakirc)
+		var file, err = os.Create(confFile)
 		if err != nil {
-			return fmt.Errorf("Cannot create file: %s", client.kamakirc)
+			return fmt.Errorf("Cannot create file: %s", confFile)
 		}
 		defer file.Close()
 	}
 	return nil
 }
 
-// Validates the existence of the client fields as well as the validity of
-// the given authentication URL endpoint.
-// Returns error if any of the fields is not valid; nil otherwise.
-func (client Client) Validate() error {
+// `Validate` is specified in the `Client` interface.
+func (client KamakiClient) Validate() error {
 	if client.cloudName == "" {
 		return fmt.Errorf("missing cloud name")
 	}
@@ -141,7 +159,7 @@ func (client Client) Validate() error {
 	return nil
 }
 
-// Getter of kamakirc field.
-func (client Client) GetKamakirc() string {
+// `GetConfigFile` is specified in the `Client` interface.
+func (client KamakiClient) GetConfigFile() string {
 	return client.kamakirc
 }

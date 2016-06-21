@@ -18,7 +18,7 @@ type Client struct {
 // It returns an error if the user cannot be authenticated.
 func (astakos Client) AuthenticateUser() error {
 	var args = []string{"user", "authenticate", "-c",
-		astakos.Client.GetKamakirc()}
+		astakos.Client.GetConfigFile()}
 	_, err := kamaki.RunCmdOutput(args)
 	if err != nil {
 		return fmt.Errorf("Cannot authenticate user")

@@ -7,11 +7,6 @@ import (
 	"github.com/juju/juju/kamaki/client"
 )
 
-// Filter field keys.
-const (
-	NamePrefix = "--name-prefix"
-)
-
 // This client executes kamaki commands for CRUD operations on Synnefo
 // Virtual Servers.
 type Client struct {
@@ -41,6 +36,8 @@ type ServerDetails struct {
 	Name string
 	// Server host.
 	Host string `json:"SNF:fqdn"`
+	// Custom Metadata of the server.
+	Metadata map[string]string
 }
 
 // This struct defines all required information for creating a new Virtual
@@ -56,6 +53,8 @@ type ServerOpts struct {
 	ImageID string
 	// Slice of files to be injected to the new Server.
 	Personality []PersonalityInfo
+	// Custom Metadata for the server creation.
+	Metadata map[string]string
 	// Wait server to build.
 	Wait bool
 }
@@ -68,12 +67,14 @@ type ServerOpts struct {
 // Returns details of the created server or any error encountered.
 func (compute Client) CreateServer(serverOpts ServerOpts) (
 	*ServerDetails, error) {
-	personality := formatPersonalityInfo(serverOpts.Personality)
+	personality := FormatPersonalityInfo(serverOpts.Personality)
+	metadata := FormatMetadata(serverOpts.Metadata)
 	args := []string{"server", "create", "--name", serverOpts.Name,
 		"--flavor-id", serverOpts.FlavorID, "--image-id", serverOpts.ImageID,
 		"--project-id", serverOpts.ProjectID, "--output-format", "json", "-c",
-		compute.Client.GetKamakirc()}
+		compute.Client.GetConfigFile()}
 	args = append(args, personality...)
+	args = append(args, metadata...)
 	if serverOpts.Wait {
 		args = append(args, "-w")
 	}
@@ -91,14 +92,11 @@ func (compute Client) CreateServer(serverOpts ServerOpts) (
 
 // This functions lists servers of a specific Synnefo cloud according to this
 // client.
-// Lists servers according to the filtering given as parameter.
 // Returns a slice of the details of the servers or any error encountered.
-func (compute Client) ListServers(filter map[string][]string) (
+func (compute Client) ListServers() (
 	[]ServerDetails, error) {
-	filterValues := formatFilter(filter)
 	args := []string{"server", "list", "-l", "--output-format",
-		"json", "-c", compute.Client.GetKamakirc()}
-	args = append(args, filterValues...)
+		"json", "-c", compute.Client.GetConfigFile()}
 	output, err := kamaki.RunCmdOutput(args)
 	if err != nil {
 		return nil, fmt.Errorf("Cannot list servers")
@@ -111,24 +109,23 @@ func (compute Client) ListServers(filter map[string][]string) (
 	return servers, nil
 }
 
-// This function filtering options and formats them to a slice of strings.
-// This format is required to pass filtering options as argument kamaki exec
-// commands.
-func formatFilter(filter map[string][]string) []string {
-	var filterValues []string
-	for k, filt := range filter {
-		for _, v := range filt {
-			filterValues = append(filterValues, []string{k, v}...)
-		}
+// This function takes metadata and formats them to a slice of strings.
+// This format is required to pass custom metadta as argument to kamaki exec
+// command.
+func FormatMetadata(metadata map[string]string) []string {
+	var formattedMetadata []string
+	for k, v := range metadata {
+		formattedMetadata = append(formattedMetadata,
+			[]string{"-m", k + "=" + v}...)
 	}
-	return filterValues
+	return formattedMetadata
 }
 
 // This function takes a slice of personality info and formats them to a
 // slice of strings.
 // This format is required to pass personality info as argument to kamaki exec
 // command.
-func formatPersonalityInfo(personalityInfo []PersonalityInfo) []string {
+func FormatPersonalityInfo(personalityInfo []PersonalityInfo) []string {
 	var personality []string
 	for _, data := range personalityInfo {
 		personality = append(personality, []string{"-p",
