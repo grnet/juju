@@ -12,25 +12,25 @@ import (
 // This interface defines Kamaki clients which executing kamaki commands via
 // exec.
 type Client interface {
-	// Sets the cloud name to the specified config file client.
+	// Sets the cloud name to the client's specified config file.
 	// It returns any error encountered.
 	SetAuthURL() error
 
-	// Sets the token to the specified config file by client.
+	// Sets the token to the client's specified config file.
 	// It returns any error encountered.
 	SetToken() error
 
-	// Sets the default cloud to the specified kamakirc file.
+	// Sets the default cloud to the client's specified config file.
 	// It returns any error encountered.
 	SetCloud() error
 
 	// Validates the existence of the client fields as well as the validity of
 	// the given authentication URL endpoint.
-	// Returns error if any of the fields is not valid; nil otherwise.
+	// Returns error if any of the fields are not valid; nil otherwise.
 	Validate() error
 
-	// Gets the location of the client config file.
-	GetConfigFile() string
+	// Gets the location of the client's config file.
+	GetConfigFilePath() string
 }
 
 // This struct represents a client for executing kamaki commands.
@@ -44,6 +44,8 @@ type KamakiClient struct {
 	// Path to kamakirc file.
 	kamakirc string
 }
+
+var _ Client = (*KamakiClient)(nil)
 
 // This function constructs a new kamaki client based on the parameters.
 // Before constructing a new client, it gets the absolute path of kamakirc file
@@ -66,7 +68,7 @@ func Setup(client Client) error {
 	if err := client.Validate(); err != nil {
 		return err
 	}
-	if err := CreateConfFile(client.GetConfigFile()); err != nil {
+	if err := CreateConfFile(client.GetConfigFilePath()); err != nil {
 		return err
 	}
 	if err := client.SetAuthURL(); err != nil {
@@ -149,17 +151,17 @@ func (client KamakiClient) Validate() error {
 		return fmt.Errorf("missing kamakirc")
 	}
 	if client.authURL == "" {
-		return fmt.Errorf("missing authURL")
+		return fmt.Errorf("missing auth URL")
 	}
 	parts, err := url.Parse(client.authURL)
 	if err != nil || parts.Host == "" || parts.Scheme == "" {
-		return fmt.Errorf("invalid auth-url value %q",
+		return fmt.Errorf("invalid auth URL value %q",
 			client.authURL)
 	}
 	return nil
 }
 
-// `GetConfigFile` is specified in the `Client` interface.
-func (client KamakiClient) GetConfigFile() string {
+// `GetConfigFilePath` is specified in the `Client` interface.
+func (client KamakiClient) GetConfigFilePath() string {
 	return client.kamakirc
 }

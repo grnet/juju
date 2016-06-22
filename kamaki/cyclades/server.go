@@ -72,7 +72,7 @@ func (compute Client) CreateServer(serverOpts ServerOpts) (
 	args := []string{"server", "create", "--name", serverOpts.Name,
 		"--flavor-id", serverOpts.FlavorID, "--image-id", serverOpts.ImageID,
 		"--project-id", serverOpts.ProjectID, "--output-format", "json", "-c",
-		compute.Client.GetConfigFile()}
+		compute.Client.GetConfigFilePath()}
 	args = append(args, personality...)
 	args = append(args, metadata...)
 	if serverOpts.Wait {
@@ -96,7 +96,7 @@ func (compute Client) CreateServer(serverOpts ServerOpts) (
 func (compute Client) ListServers() (
 	[]ServerDetails, error) {
 	args := []string{"server", "list", "-l", "--output-format",
-		"json", "-c", compute.Client.GetConfigFile()}
+		"json", "-c", compute.Client.GetConfigFilePath()}
 	output, err := kamaki.RunCmdOutput(args)
 	if err != nil {
 		return nil, fmt.Errorf("Cannot list servers")
@@ -110,8 +110,8 @@ func (compute Client) ListServers() (
 }
 
 // This function takes metadata and formats them to a slice of strings.
-// This format is required to pass custom metadta as argument to kamaki exec
-// command.
+// This format is required to pass custom metadta as an argument to the kamaki
+// exec command.
 func FormatMetadata(metadata map[string]string) []string {
 	var formattedMetadata []string
 	for k, v := range metadata {

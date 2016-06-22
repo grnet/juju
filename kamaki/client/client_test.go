@@ -10,67 +10,67 @@ import (
 )
 
 const (
-	kamakirc = ".test/kamakirc"
+	kamakircPath = ".test/kamakirc"
 )
 
 type ClientSetupSuite struct{}
 
 var _ = gc.Suite(&ClientSetupSuite{})
 
-type TestClient struct {
+type MockClient struct {
 	errAuthURL  bool
 	errToken    bool
 	errCloud    bool
 	errValidate bool
 }
 
-func (testClient TestClient) SetAuthURL() error {
-	if testClient.errAuthURL {
-		return fmt.Errorf("A test error")
+func (mockClient MockClient) SetAuthURL() error {
+	if mockClient.errAuthURL {
+		return fmt.Errorf("A test error on url")
 	}
 	return nil
 }
 
-func (testClient TestClient) SetToken() error {
-	if testClient.errToken {
-		return fmt.Errorf("A test error")
+func (mockClient MockClient) SetToken() error {
+	if mockClient.errToken {
+		return fmt.Errorf("A test error on token")
 	}
 	return nil
 }
 
-func (testClient TestClient) SetCloud() error {
-	if testClient.errCloud {
-		return fmt.Errorf("A test error")
+func (mockClient MockClient) SetCloud() error {
+	if mockClient.errCloud {
+		return fmt.Errorf("A test error on cloud")
 	}
 	return nil
 }
 
-func (testClient TestClient) Validate() error {
-	if testClient.errValidate {
-		return fmt.Errorf("A test error")
+func (mockClient MockClient) Validate() error {
+	if mockClient.errValidate {
+		return fmt.Errorf("A test error on validation")
 	}
 	return nil
 }
 
-func (testClient TestClient) GetConfigFile() string {
-	return kamakirc
+func (mockClient MockClient) GetConfigFilePath() string {
+	return kamakircPath
 }
 
 func getKamakirc(c *gc.C) string {
 	usr, err := user.Current()
 	c.Assert(err, gc.IsNil)
-	return path.Join(usr.HomeDir, ".test/kamakirc")
+	return path.Join(usr.HomeDir, kamakircPath)
 }
 
-func setupKamakirc(c *gc.C, kamakirc string) {
-	client := KamakiClient{kamakirc: ".test/kamakirc"}
-	_, err := os.Stat(kamakirc)
+func setupKamakirc(c *gc.C, kamakircPath string) {
+	client := KamakiClient{kamakirc: kamakircPath}
+	_, err := os.Stat(kamakircPath)
 	c.Assert(os.IsNotExist(err), gc.Equals, true)
-	err = CreateConfFile(client.GetConfigFile())
+	err = CreateConfFile(client.GetConfigFilePath())
 	c.Assert(err, gc.IsNil)
-	_, err = os.Stat(kamakirc)
+	_, err = os.Stat(kamakircPath)
 	c.Assert(err, gc.IsNil)
-	err = CreateConfFile(client.GetConfigFile())
+	err = CreateConfFile(client.GetConfigFilePath())
 	c.Assert(err, gc.IsNil)
 	err = CreateConfFile(".test/kamakirc/")
 	c.Assert(err, gc.ErrorMatches, "Cannot create directory: .test/kamakirc")
@@ -81,7 +81,7 @@ func (s *ClientSetupSuite) TestKamakiClientSetup(c *gc.C) {
 		authURL:   "https://test.com",
 		token:     "test token",
 		cloudName: "test_cloud",
-		kamakirc:  kamakirc,
+		kamakirc:  kamakircPath,
 	}
 	err := client.SetAuthURL()
 	c.Assert(err, gc.ErrorMatches, "Cannot set auth URL")
@@ -90,7 +90,7 @@ func (s *ClientSetupSuite) TestKamakiClientSetup(c *gc.C) {
 	err = client.SetCloud()
 	c.Assert(err, gc.ErrorMatches, "Cannot set default cloud")
 
-	setupKamakirc(c, kamakirc)
+	setupKamakirc(c, kamakircPath)
 	err = client.SetAuthURL()
 	c.Assert(err, gc.IsNil)
 	err = client.SetToken()
@@ -100,41 +100,46 @@ func (s *ClientSetupSuite) TestKamakiClientSetup(c *gc.C) {
 }
 
 func (s *ClientSetupSuite) TestValidate(c *gc.C) {
-	client := KamakiClient{}
+	client := &KamakiClient{"test cloud", "https://test.com", "test token",
+		"test kamakirc"}
 	err := client.Validate()
-	c.Assert(err, gc.ErrorMatches, "missing cloud name")
-	client.cloudName = "test cloud"
-	err = client.Validate()
-	c.Assert(err, gc.ErrorMatches, "missing token")
-	client.token = "test token"
-	err = client.Validate()
-	c.Assert(err, gc.ErrorMatches, "missing kamakirc")
-	client.kamakirc = "test kamakirc"
-	err = client.Validate()
-	c.Assert(err, gc.ErrorMatches, "missing authURL")
+	c.Assert(err, gc.IsNil)
+	clients := map[string]KamakiClient{
+		"cloud name": KamakiClient{"", "https://test.com", "test token",
+			"test kamakircPath"},
+		"token": KamakiClient{"test cloud", "https://test.com", "",
+			"test kamakircPath"},
+		"kamakirc": KamakiClient{"test cloud", "https://test.com",
+			"test token", ""},
+		"auth URL": KamakiClient{"test cloud", "", "test token", "test kamakirc"},
+	}
+	for errField, client := range clients {
+		err = client.Validate()
+		c.Assert(err, gc.ErrorMatches, "missing "+errField)
+	}
+
 	client.authURL = "test url"
 	err = client.Validate()
-	c.Assert(err, gc.ErrorMatches, "invalid auth-url value \"test url\"")
-	client.authURL = "https://test.com"
-	err = client.Validate()
-	c.Assert(err, gc.IsNil)
+	c.Assert(err, gc.ErrorMatches, "invalid auth URL value \"test url\"")
 }
 
-func (s *ClientSetupSuite) TestClientSetup(c *gc.C) {
-	clientCases := []TestClient{TestClient{true, false, false, false},
-		TestClient{false, true, false, false},
-		TestClient{false, false, true, false},
-		TestClient{false, false, false, true}}
-	for _, clientCase := range clientCases {
-		err := Setup(clientCase)
-		c.Assert(err, gc.ErrorMatches, "A test error")
+func (s *ClientSetupSuite) MockClientSetup(c *gc.C) {
+	clientCases := map[string]MockClient{
+		"url":        MockClient{true, false, false, false},
+		"token":      MockClient{false, true, false, false},
+		"cloud":      MockClient{false, false, true, false},
+		"validation": MockClient{false, false, false, true},
 	}
-	testClient := TestClient{false, false, false, false}
-	err := Setup(testClient)
+	for errField, clientCase := range clientCases {
+		err := Setup(clientCase)
+		c.Assert(err, gc.ErrorMatches, "A test error on "+errField)
+	}
+	mockClient := MockClient{false, false, false, false}
+	err := Setup(mockClient)
 	c.Assert(err, gc.IsNil)
 }
 
 func (s *ClientSetupSuite) TearDownTest(c *gc.C) {
-	err := os.RemoveAll(kamakirc)
+	err := os.RemoveAll(kamakircPath)
 	c.Assert(err, gc.IsNil)
 }
