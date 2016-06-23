@@ -18,6 +18,10 @@ import (
 	"github.com/juju/juju/kamaki/cyclades"
 )
 
+const (
+	authorizedKeysPath = "/root/.ssh/authorized_keys"
+)
+
 // `AllInstances` function is specified in `environs.InstanceBroker` interface.
 func (snf *synnefoEnviron) AllInstances() ([]instance.Instance, error) {
 	servers, err := snf.compute.ListServers()
@@ -68,7 +72,7 @@ func (snf *synnefoEnviron) prepareServerCreation(
 	}
 	keyData := cyclades.PersonalityInfo{
 		LocalPath:  snf.cfg.sshKey(),
-		RemotePath: "/root/.ssh/authorized_keys",
+		RemotePath: authorizedKeysPath,
 		Owner:      "root",
 		Group:      "root",
 		Permission: "0600",
