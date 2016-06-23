@@ -31,7 +31,7 @@ var configSchema = environschema.Fields{
 		Mandatory:   true,
 	},
 	"kamakirc-path": {
-		Description: "Path to create kamakirc file",
+		Description: "Path to create kamakirc file relative to the $HOME directory",
 		Type:        environschema.Tstring,
 		EnvVar:      "KAMAKIRC_PATH",
 		Group:       environschema.AccountGroup,
